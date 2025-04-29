@@ -23,8 +23,15 @@ int main(int argc, char** argv) {
         } 
     } 
      
-    MPI_Bcast(matrix, ROWS*COLS, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
-     
+    // Start timing
+    double start_time = MPI_Wtime(); 
+
+    MPI_Bcast(matrix, ROWS * COLS, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
+
+    // End timing
+    double end_time = MPI_Wtime(); 
+    double elapsed_time = end_time - start_time; 
+
     MPI_Barrier(MPI_COMM_WORLD); 
     for (int p = 0; p < size; p++) { 
         if (rank == p) { 
@@ -35,6 +42,7 @@ int main(int argc, char** argv) {
                 } 
                 printf("\n"); 
             } 
+            printf("Elapsed time for MPI_Bcast = %f seconds\n", elapsed_time);
             fflush(stdout); 
         } 
         MPI_Barrier(MPI_COMM_WORLD); 

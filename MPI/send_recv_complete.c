@@ -1,55 +1,52 @@
 #include <mpi.h> 
 #include <stdio.h> 
+#include <stdlib.h> 
  
 int main(int argc, char** argv) { 
     MPI_Init(&argc, &argv); 
      
-    int world_rank; 
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); 
+    int rank, size; 
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
+    MPI_Comm_size(MPI_COMM_WORLD, &size); 
      
-    int world_size; 
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size); 
+    const int ROWS = 3, COLS = 4; 
+    double matrix[ROWS][COLS]; 
      
-    if (world_size < 5) { 
-        printf("This program requires at least 5 processes\n"); 
-        MPI_Finalize(); 
-        return 1; 
+    if (rank == 0) { 
+        printf("Root initializing matrix:\n"); 
+        for (int i = 0; i < ROWS; i++) { 
+            for (int j = 0; j < COLS; j++) { 
+                matrix[i][j] = i * 10 + j; 
+                printf("%.1f ", matrix[i][j]); 
+            } 
+            printf("\n"); 
+        } 
     } 
      
-    int number = 12345;
-    int response;
-    MPI_Status status;
+    // Start timing
+    double start_time = MPI_Wtime(); 
 
-    if (world_rank == 0) { 
-        double start_time = MPI_Wtime(); // Start timing
+    MPI_Bcast(matrix, ROWS * COLS, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
 
-        // Send the number to processes 1, 2, 3, and 4
-        for (int i = 1; i <= 4; i++) {
-            MPI_Send(&number, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-            printf("Process 0 sent number %d to process %d\n", number, i);
-        }
+    // End timing
+    double end_time = MPI_Wtime(); 
+    double elapsed_time = end_time - start_time; 
 
-        // Receive responses from processes 1, 2, 3, and 4
-        for (int i = 1; i <= 4; i++) {
-            MPI_Recv(&response, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-            printf("Process 0 received response %d from process %d\n", response, i);
-        }
-
-        double end_time = MPI_Wtime(); // End timing
-        double elapsed_time = end_time - start_time;
-        printf("Elapsed time for communication: %f seconds\n", elapsed_time);
-
-    } else if (world_rank >= 1 && world_rank <= 4) { 
-        // Processes 1, 2, 3, and 4 receive number from root
-        MPI_Recv(&number, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
-        printf("Process %d received number %d from process 0\n", world_rank, number);
-
-        // Do some "processing" (example: add rank to number)
-        response = number + world_rank;
-
-        // Send response back to root
-        MPI_Send(&response, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    } 
+    MPI_Barrier(MPI_COMM_WORLD); 
+    for (int p = 0; p < size; p++) { 
+        if (rank == p) { 
+            printf("Process %d received:\n", rank); 
+            for (int i = 0; i < ROWS; i++) { 
+                for (int j = 0; j < COLS; j++) { 
+                    printf("%.1f ", matrix[i][j]); 
+                } 
+                printf("\n"); 
+            } 
+            printf("Elapsed time for MPI_Bcast = %f seconds\n", elapsed_time);
+            fflush(stdout); 
+        } 
+        MPI_Barrier(MPI_COMM_WORLD); 
+    }     
      
     MPI_Finalize(); 
     return 0; 
